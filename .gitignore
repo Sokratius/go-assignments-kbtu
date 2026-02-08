@@ -1,0 +1,9 @@
+# Go
+/bin/
+/vendor/
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/

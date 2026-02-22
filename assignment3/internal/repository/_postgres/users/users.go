@@ -18,13 +18,10 @@ func NewUserRepository(db *_postgres.Dialect) *Repository {
 }
 
 func (r *Repository) GetUsers() ([]modules.User, error) {
-	var users []modules.User
+	users := make([]modules.User, 0)
 	err := r.db.DB.Select(&users, "SELECT * FROM users")
 	if err != nil {
 		return nil, err
-	}
-	if users == nil {
-		users = []modules.User{}
 	}
 	return users, nil
 }
@@ -42,21 +39,20 @@ func (r *Repository) CreateUser(user *modules.User) (int, error) {
 	query := `
 	INSERT INTO users (name, email, age)
 	VALUES ($1, $2, $3)
-	RETURNING id`
+	RETURNING id, created_at`
 
-	var id int
 	err := r.db.DB.QueryRow(
 		query,
 		user.Name,
 		user.Email,
 		user.Age,
-	).Scan(&id)
+	).Scan(&user.ID, &user.CreatedAt)
 
 	if err != nil {
 		return 0, err
 	}
 
-	return id, nil
+	return user.ID, nil
 }
 
 func (r *Repository) UpdateUser(user *modules.User) error {

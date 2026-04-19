@@ -1,0 +1,54 @@
+package exchange
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"time"
+)
+
+type RateResponse struct {
+	Base     string  `json:"base"`
+	Target   string  `json:"target"`
+	Rate     float64 `json:"rate"`
+	ErrorMsg string  `json:"error,omitempty"`
+}
+
+type ExchangeService struct {
+	BaseURL    string
+	HTTPClient *http.Client
+}
+
+func NewExchangeService(baseURL string) *ExchangeService {
+	return &ExchangeService{
+		BaseURL: baseURL,
+		HTTPClient: &http.Client{
+			Timeout: 5 * time.Second,
+		},
+	}
+}
+
+// GetRate requests the rate. Example URL: /convert?from=USD&to=EUR
+func (s *ExchangeService) GetRate(from, to string) (float64, error) {
+	url := fmt.Sprintf("%s/convert?from=%s&to=%s", s.BaseURL, from, to)
+	resp, err := s.HTTPClient.Get(url)
+	if err != nil {
+		return 0, fmt.Errorf("network error: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var result RateResponse
+
+	if resp.StatusCode != http.StatusOK {
+		if err := json.NewDecoder(resp.Body).Decode(&result); err == nil && result.ErrorMsg != "" {
+			return 0, fmt.Errorf("api error: %s", result.ErrorMsg)
+		}
+		return 0, fmt.Errorf("unexpected status: %d", resp.StatusCode)
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return 0, fmt.Errorf("decode error: %w", err)
+	}
+
+	return result.Rate, nil
+}
